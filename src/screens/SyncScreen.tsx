@@ -24,6 +24,7 @@ import { SyncStatus, Visit } from "../types";
 interface SyncSection {
   key: string;
   routeName: string;
+  showRouteName: boolean;
   statusLabel: string;
   icon: keyof typeof MaterialIcons.glyphMap;
   selectable: boolean;
@@ -34,7 +35,9 @@ interface SyncSection {
 // carry pointId → route.points linkage, so this scales cleanly if the app
 // ever loads more than one route), then split by sync status within each —
 // pending/syncing/error visits separated from synced ones, so it's obvious
-// at a glance what's still actionable per route.
+// at a glance what's still actionable per route. Only the first section for
+// a given route carries `showRouteName: true`, so the route name is printed
+// once per route instead of once per status group.
 function buildSyncSections(
   routes: { routeId: string; routeName: string; points: { id: number }[] }[],
   visits: Visit[],
@@ -50,6 +53,7 @@ function buildSyncSections(
       sections.push({
         key: `${r.routeId}-pending`,
         routeName: r.routeName,
+        showRouteName: true,
         statusLabel: "Pendentes de sincronização",
         icon: "pending",
         selectable: true,
@@ -60,6 +64,7 @@ function buildSyncSections(
       sections.push({
         key: `${r.routeId}-synced`,
         routeName: r.routeName,
+        showRouteName: sections.length === 0,
         statusLabel: "Sincronizados",
         icon: "check-circle",
         selectable: false,
@@ -198,7 +203,11 @@ export function SyncScreen({ navigation }: Props) {
                 {section.statusLabel} ({section.data.length})
               </Text>
             </View>
-            <Text style={styles.sectionHeaderRoute}>{section.routeName}</Text>
+            {section.showRouteName ? (
+              <Text style={styles.sectionHeaderRoute}>
+                {section.routeName}
+              </Text>
+            ) : null}
             {section.selectable ? (
               <Pressable onPress={toggleSelectAll} hitSlop={8}>
                 <Text style={styles.selectAllText}>
@@ -340,35 +349,51 @@ function SyncCard({
   return (
     <Pressable
       style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
-      onPress={onPress}
+      onPress={showCheckbox ? onToggleSelect : undefined}
     >
       {showCheckbox ? (
-        <Pressable style={styles.checkbox} onPress={onToggleSelect} hitSlop={8}>
+        <View style={styles.checkbox}>
           <MaterialIcons
             name={selected ? "check-box" : "check-box-outline-blank"}
             size={24}
             color={selected ? c.secondary : c.outline}
           />
-        </Pressable>
+        </View>
       ) : null}
 
-      <Pressable
-        style={styles.thumbnail}
-        disabled={!visit.photo}
-        onPress={() => setExpanded(true)}
-      >
-        {visit.photo ? (
-          <Image source={{ uri: visit.photo }} style={styles.thumbnailImage} />
-        ) : (
-          <View style={styles.thumbnailFallback}>
-            <MaterialIcons
-              name="image-not-supported"
-              size={22}
-              color={c.onSurfaceVariant}
+      <View style={styles.thumbnailColumn}>
+        <Pressable
+          style={styles.thumbnail}
+          disabled={!visit.photo}
+          onPress={() => setExpanded(true)}
+        >
+          {visit.photo ? (
+            <Image
+              source={{ uri: visit.photo }}
+              style={styles.thumbnailImage}
             />
-          </View>
-        )}
-      </Pressable>
+          ) : (
+            <View style={styles.thumbnailFallback}>
+              <MaterialIcons
+                name="image-not-supported"
+                size={22}
+                color={c.onSurfaceVariant}
+              />
+            </View>
+          )}
+        </Pressable>
+
+        <Pressable
+          style={({ pressed }) => [
+            styles.detailsButton,
+            pressed && styles.pressed,
+          ]}
+          onPress={onPress}
+          hitSlop={8}
+        >
+          <Text style={styles.detailsButtonText}>Ver detalhes</Text>
+        </Pressable>
+      </View>
 
       {visit.photo ? (
         <Modal
@@ -527,6 +552,7 @@ const styles = StyleSheet.create({
     height: 24,
   },
   card: {
+    position: "relative",
     backgroundColor: c.surfaceContainerLowest,
     borderWidth: 1,
     borderColor: c.surfaceVariant,
@@ -544,7 +570,13 @@ const styles = StyleSheet.create({
     opacity: 0.85,
   },
   checkbox: {
-    alignSelf: "center",
+    position: "absolute",
+    top: 20,
+    right: 16,
+    zIndex: 1,
+  },
+  thumbnailColumn: {
+    gap: 8,
   },
   thumbnail: {
     width: 96,
@@ -554,6 +586,19 @@ const styles = StyleSheet.create({
     borderColor: c.outlineVariant,
     backgroundColor: c.surfaceContainer,
     overflow: "hidden",
+  },
+  detailsButton: {
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: c.outlineVariant,
+    paddingVertical: 6,
+  },
+  detailsButtonText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: c.secondary,
   },
   thumbnailImage: {
     width: "100%",
@@ -577,6 +622,7 @@ const styles = StyleSheet.create({
   cardInfo: {
     flex: 1,
     justifyContent: "center",
+    paddingRight: 32,
   },
   cardCaption: {
     fontSize: 12,

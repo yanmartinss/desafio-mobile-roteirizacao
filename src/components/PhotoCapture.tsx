@@ -143,9 +143,7 @@ export function PhotoCapture({
       ) : ocrStatus === "found" ? (
         <View style={styles.ocrRow}>
           <MaterialIcons name="auto-awesome" size={14} color={c.secondary} />
-          <Text style={styles.ocrTextSuccess}>
-            Valor identificado na foto. Confira e digite em "Nova leitura".
-          </Text>
+          <Text style={styles.ocrTextSuccess}>Valor identificado na foto.</Text>
         </View>
       ) : ocrStatus === "not-found" ? (
         <View style={styles.ocrRow}>
