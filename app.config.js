@@ -14,14 +14,14 @@ module.exports = {
       package: "com.yanmartinss.desafiomobileroteirizacao",
       adaptiveIcon: {
         backgroundColor: "#E6F4FE",
-        foregroundImage: "./assets/android-icon-foreground.png",
-        backgroundImage: "./assets/android-icon-background.png",
-        monochromeImage: "./assets/android-icon-monochrome.png",
+        foregroundImage: "./assets/icon.png",
+        backgroundImage: "./assets/icon.png",
+        monochromeImage: "./assets/icon.png",
       },
       predictiveBackGestureEnabled: false,
     },
     web: {
-      favicon: "./assets/favicon.png",
+      favicon: "./assets/icon.png",
     },
     plugins: [
       "expo-sqlite",
