@@ -78,7 +78,7 @@ export function RouteSelectionScreen({ navigation }: Props) {
         <View style={styles.offlineBanner}>
           <MaterialIcons name="wifi-off" size={20} color="#ffffff" />
           <Text style={styles.offlineBannerText}>
-            Modo Offline - Armazenamento Local Ativo
+            Modo Offline - Armazenamento Local Continua Ativo
           </Text>
         </View>
       ) : null}

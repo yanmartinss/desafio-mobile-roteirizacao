@@ -166,7 +166,11 @@ export function RouteListScreen({ navigation }: Props) {
           onPress={() => navigation.goBack()}
           hitSlop={8}
         >
-          <MaterialIcons name="arrow-back" size={22} color={c.onSurfaceVariant} />
+          <MaterialIcons
+            name="arrow-back"
+            size={22}
+            color={c.onSurfaceVariant}
+          />
           <Text style={styles.headerBackButtonText}>Seleção de Rotas</Text>
         </Pressable>
       </SafeAreaView>
@@ -246,7 +250,7 @@ export function RouteListScreen({ navigation }: Props) {
             </Pressable>
 
             <View style={styles.summaryGrid}>
-              <SummaryCard label="Total" value={total} />
+              <SummaryCard label="Total" value={total} accentColor="#0EA5E9" />
               <SummaryCard
                 label="Visitados"
                 value={visited}
@@ -268,8 +272,7 @@ export function RouteListScreen({ navigation }: Props) {
                     color={c.onSurfaceVariant}
                   />
                   <Text style={styles.mapHeaderTitle} numberOfLines={1}>
-                    Rota: {route.neighborhood}, {route.city} -{" "}
-                    {route.state}
+                    Rota: {route.neighborhood}, {route.city} - {route.state}
                   </Text>
                 </View>
               </View>
@@ -438,7 +441,7 @@ function InspectionCard({
             </>
           ) : (
             <>
-              <Text style={styles.startReadingButtonText}>Iniciar leitura</Text>
+              <Text style={styles.startReadingButtonText}>Iniciar visita</Text>
               <MaterialIcons
                 name="arrow-forward"
                 size={20}

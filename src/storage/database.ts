@@ -1,5 +1,5 @@
 import * as SQLite from "expo-sqlite";
-import { CREATE_TABLES_SQL, DB_NAME } from "./schema";
+import { CREATE_TABLES_SQL, DB_NAME, Migration, MIGRATIONS } from "./schema";
 import { Route, RoutePoint, Visit, SyncStatus } from "../types";
 
 let dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
@@ -8,10 +8,43 @@ export function getDb(): Promise<SQLite.SQLiteDatabase> {
   if (!dbPromise) {
     dbPromise = SQLite.openDatabaseAsync(DB_NAME).then(async (db) => {
       await db.execAsync(CREATE_TABLES_SQL);
+      await runMigrations(db);
       return db;
     });
   }
   return dbPromise;
+}
+
+// Applies any pending schema migrations, tracked via SQLite's built-in
+// `PRAGMA user_version`. CREATE_TABLES_SQL always represents schema version
+// 1; a fresh install and a pre-migration install both sit at user_version 0
+// after opening, so either way we bump straight to 1 (the baseline schema
+// already exists on disk in both cases) before applying anything newer.
+export async function runMigrations(
+  db: SQLite.SQLiteDatabase,
+  migrations: Migration[] = MIGRATIONS,
+): Promise<void> {
+  const row = await db.getFirstAsync<{ user_version: number }>(
+    "PRAGMA user_version",
+  );
+  let version = row?.user_version ?? 0;
+
+  if (version === 0) {
+    version = 1;
+    await db.execAsync(`PRAGMA user_version = ${version}`);
+  }
+
+  const pending = migrations
+    .filter((m) => m.version > version)
+    .sort((a, b) => a.version - b.version);
+
+  for (const migration of pending) {
+    await db.withTransactionAsync(async () => {
+      await db.execAsync(migration.sql);
+      await db.execAsync(`PRAGMA user_version = ${migration.version}`);
+    });
+    version = migration.version;
+  }
 }
 
 interface RouteRow {
@@ -76,8 +109,8 @@ function visitRowToVisit(row: VisitRow): Visit {
     meterNumber: row.meter_number,
     previousReading: row.previous_reading,
     currentReading: row.current_reading,
-    latitude: row.latitude ?? 0,
-    longitude: row.longitude ?? 0,
+    latitude: row.latitude,
+    longitude: row.longitude,
     capturedAt: row.captured_at,
     photo: row.photo ?? "",
     syncStatus: row.sync_status,
@@ -223,4 +256,5 @@ export async function updatePointStatus(
 export async function resetAllVisits(): Promise<void> {
   const db = await getDb();
   await db.runAsync("DELETE FROM visits;");
+  await db.runAsync("UPDATE route_points SET status = 'pending';");
 }

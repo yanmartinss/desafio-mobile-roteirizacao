@@ -5,7 +5,13 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-const SIMULATED_FAILURE_RATE = 0.2;
+// Only simulate sync failures in the developer version (__DEV__) — a
+// release build (assembleRelease) always succeeds, since the failure rate
+// exists to let testers exercise the "error" sync state, not to represent
+// real-world reliability.
+const SIMULATED_FAILURE_RATE = __DEV__
+  ? Number(process.env.EXPO_PUBLIC_SIMULATED_FAILURE_RATE ?? "0.2")
+  : 0;
 
 async function syncVisit(
   visit: Visit,

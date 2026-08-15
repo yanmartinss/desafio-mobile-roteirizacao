@@ -42,3 +42,20 @@ CREATE TABLE IF NOT EXISTS visits (
   FOREIGN KEY (point_id) REFERENCES route_points(id)
 );
 `;
+
+export interface Migration {
+  version: number;
+  sql: string;
+}
+
+export const MIGRATIONS: Migration[] = [
+  // example:
+  // {
+  //     version: 2,
+  //     sql: `
+  //       ALTER TABLE visits ADD COLUMN notes TEXT;
+  //       ALTER TABLE visits ADD COLUMN secondary_photo_uri TEXT;
+  //       CREATE INDEX IF NOT EXISTS idx_visits_point ON visits(pointId);
+  //     `,
+  //   },
+];

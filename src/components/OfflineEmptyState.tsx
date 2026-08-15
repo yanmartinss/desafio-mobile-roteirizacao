@@ -11,7 +11,10 @@ export function OfflineEmptyState({ onRetry }: { onRetry: () => void }) {
         realizar a carga inicial.
       </Text>
       <Pressable
-        style={({ pressed }) => [styles.retryButton, pressed && { opacity: 0.8 }]}
+        style={({ pressed }) => [
+          styles.retryButton,
+          pressed && { opacity: 0.8 },
+        ]}
         onPress={onRetry}
       >
         <MaterialIcons name="refresh" size={18} color="#ffffff" />

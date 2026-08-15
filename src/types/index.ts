@@ -31,8 +31,8 @@ export interface Visit {
   meterNumber: string;
   previousReading: number;
   currentReading: number;
-  latitude: number;
-  longitude: number;
+  latitude: number | null;
+  longitude: number | null;
   capturedAt: string;
   photo: string;
   syncStatus: SyncStatus;

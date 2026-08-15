@@ -33,12 +33,15 @@ type WebViewMessage =
 // Leaflet's JS/CSS are vendored inline (leafletDist.ts) rather than loaded
 // from a CDN — otherwise a first-ever launch with no connection would never
 // even initialize the map engine, let alone render markers offline.
-const MAP_HTML = `<!DOCTYPE html>
+const MAP_HTML =
+  `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<style>` + LEAFLET_CSS + `</style>
+<style>` +
+  LEAFLET_CSS +
+  `</style>
 <style>
   html, body, #map { height: 100%; margin: 0; padding: 0; background: #e2e8f0; }
   .visit-dot {
@@ -72,7 +75,9 @@ const MAP_HTML = `<!DOCTYPE html>
 </head>
 <body>
 <div id="map"></div>
-<script>` + LEAFLET_JS + `</script>
+<script>` +
+  LEAFLET_JS +
+  `</script>
 <script>
 (function () {
   var STATUS_COLOR = { pending: "#f59e0b", completed: "#10b981" };
@@ -446,7 +451,9 @@ export function RouteMap({ readings, onPressDetails }: Props) {
       /[\u2028\u2029]/g,
       (char) => (char === "\u2028" ? "\\u2028" : "\\u2029"),
     );
-    webviewRef.current.injectJavaScript(`window.__setReadings(${payload}); true;`);
+    webviewRef.current.injectJavaScript(
+      `window.__setReadings(${payload}); true;`,
+    );
   };
 
   useEffect(() => {
@@ -496,7 +503,11 @@ export function RouteMap({ readings, onPressDetails }: Props) {
         onPress={handleFitAll}
         hitSlop={8}
       >
-        <MaterialIcons name="filter-center-focus" size={22} color={c.secondary} />
+        <MaterialIcons
+          name="filter-center-focus"
+          size={22}
+          color={c.secondary}
+        />
       </Pressable>
     </View>
   );

@@ -29,12 +29,12 @@ export function ReadingInput({ value, onChangeText, error, disabled }: Props) {
           disabled && styles.inputDisabled,
         ]}
         value={value}
-        onChangeText={onChangeText}
+        onChangeText={(text) => onChangeText(text.replace(/[^0-9]/g, ""))}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
-        keyboardType="numeric"
-        placeholder="0000"
-        placeholderTextColor={c.onSurfaceVariant}
+        keyboardType="number-pad"
+        placeholder="Ex.: 12932"
+        placeholderTextColor={c.outlineVariant}
         editable={!disabled}
       />
       {error ? <Text style={styles.errorText}>{error}</Text> : null}

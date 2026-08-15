@@ -25,6 +25,7 @@ import { StatusBadge } from "../components/StatusBadge";
 import { Visit } from "../types";
 import { meterConnectColors as c } from "../theme/meterConnectColors";
 import { openInMaps } from "../utils/openInMaps";
+import { validateReading as validateReadingValue } from "../utils/validateReading";
 
 type Props = NativeStackScreenProps<RootStackParamList, "PointDetail">;
 
@@ -51,11 +52,13 @@ export function PointDetailScreen({ route, navigation }: Props) {
         setReading(String(visit.currentReading));
         setPhotoUri(visit.photo || null);
         setPhotoCapturedAt(visit.photo ? visit.capturedAt : null);
-        setLocation({
-          latitude: visit.latitude,
-          longitude: visit.longitude,
-          capturedAt: visit.capturedAt,
-        });
+        if (visit.latitude != null && visit.longitude != null) {
+          setLocation({
+            latitude: visit.latitude,
+            longitude: visit.longitude,
+            capturedAt: visit.capturedAt,
+          });
+        }
       }
     });
   }, [pointId]);
@@ -69,25 +72,18 @@ export function PointDetailScreen({ route, navigation }: Props) {
   }
 
   function validateReading(value: string): boolean {
-    if (!value.trim()) {
-      setReadingError("A leitura é obrigatória.");
-      return false;
-    }
-    if (isNaN(Number(value))) {
-      setReadingError("Informe um valor numérico válido.");
-      return false;
-    }
-    setReadingError(null);
-    return true;
+    const error = validateReadingValue(value);
+    setReadingError(error);
+    return error === null;
   }
 
   function handleComplete() {
     if (isLocked || !validateReading(reading) || !point) return;
 
-    if (!photoUri || !location) {
+    if (!photoUri) {
       Alert.alert(
         "Dados incompletos",
-        "É necessário tirar a foto e obter a localização antes de concluir a visita.",
+        "É necessário tirar a foto antes de concluir a visita.",
       );
       return;
     }
@@ -115,8 +111,8 @@ export function PointDetailScreen({ route, navigation }: Props) {
         meterNumber: point.meterNumber,
         previousReading: point.previousReading,
         currentReading: Number(reading),
-        latitude: location?.latitude ?? 0,
-        longitude: location?.longitude ?? 0,
+        latitude: location?.latitude ?? null,
+        longitude: location?.longitude ?? null,
         capturedAt: location?.capturedAt ?? new Date().toISOString(),
         photo: photoUri ?? "",
         syncStatus: "pending",
@@ -134,16 +130,17 @@ export function PointDetailScreen({ route, navigation }: Props) {
 
   const isReadingValid = reading.trim() !== "" && !isNaN(Number(reading));
   const hasPhoto = Boolean(photoUri);
-  const hasLocation = Boolean(location);
-  const canComplete = isReadingValid && hasPhoto && hasLocation;
+  const canComplete = isReadingValid && hasPhoto;
   // Edits stay allowed while the visit hasn't synced yet — only a synced
   // visit is truly final and read-only.
   const isLocked = existingVisit?.syncStatus === "synced";
 
+  // Location isn't required to complete a visit — GPS can legitimately fail
+  // (airplane mode, no signal) and shouldn't block the field worker; the
+  // capture button surfaces its own alert when it fails.
   const missingParts = [
     !isReadingValid && "a leitura",
     !hasPhoto && "a foto",
-    !hasLocation && "a localização",
   ].filter((part): part is string => Boolean(part));
 
   return (
@@ -177,8 +174,8 @@ export function PointDetailScreen({ route, navigation }: Props) {
           <View style={styles.pendingEditBanner}>
             <MaterialIcons name="edit" size={18} color={c.pendingBadgeText} />
             <Text style={styles.pendingEditBannerText}>
-              Visita salva localmente, aguardando sincronização. Você ainda
-              pode editar a leitura, a foto e a localização.
+              Visita salva localmente, aguardando sincronização. Você ainda pode
+              editá-la.
             </Text>
           </View>
         ) : null}
@@ -186,7 +183,7 @@ export function PointDetailScreen({ route, navigation }: Props) {
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <Text style={styles.customerName}>{point.customer}</Text>
-            <StatusBadge status={existingVisit?.syncStatus ?? point.status} />
+            <StatusBadge status={existingVisit ? "visited" : "pending"} />
           </View>
 
           <View style={styles.addressRow}>
@@ -247,16 +244,13 @@ export function PointDetailScreen({ route, navigation }: Props) {
               setPhotoUri(uri);
               setPhotoCapturedAt(takenAt);
             }}
-            onSuggestReading={(value) => {
-              setReading(value);
-              setReadingError(null);
-            }}
             disabled={isLocked}
           />
           <LocationCapture
             location={location}
             onCapture={setLocation}
             disabled={isLocked}
+            wasNotCaptured={Boolean(existingVisit) && !location}
           />
         </View>
 

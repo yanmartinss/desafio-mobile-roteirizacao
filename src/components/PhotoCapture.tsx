@@ -19,7 +19,6 @@ interface Props {
   photoUri: string | null;
   capturedAt: string | null;
   onCapture: (uri: string, capturedAt: string) => void;
-  onSuggestReading?: (value: string) => void;
   disabled?: boolean;
 }
 
@@ -30,7 +29,10 @@ type OcrStatus = "idle" | "processing" | "found" | "not-found";
 function formatTimestamp(iso: string) {
   const date = new Date(iso);
   const datePart = date.toLocaleDateString();
-  const timePart = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const timePart = date.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
   return `${datePart} ${timePart}`;
 }
 
@@ -38,7 +40,6 @@ export function PhotoCapture({
   photoUri,
   capturedAt,
   onCapture,
-  onSuggestReading,
   disabled,
 }: Props) {
   const [permission, requestPermission] = useCameraPermissions();
@@ -47,6 +48,7 @@ export function PhotoCapture({
   const [facing, setFacing] = useState<"back" | "front">("back");
   const [torchOn, setTorchOn] = useState(false);
   const [ocrStatus, setOcrStatus] = useState<OcrStatus>("idle");
+  const [recognizedValue, setRecognizedValue] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const cameraRef = useRef<CameraView>(null);
 
@@ -56,6 +58,7 @@ export function PhotoCapture({
       if (!result.granted) return;
     }
     setOcrStatus("idle");
+    setRecognizedValue(null);
     setIsOpen(true);
   }
 
@@ -82,7 +85,7 @@ export function PhotoCapture({
     const value = await recognizeMeterReading(uri);
     if (value) {
       setOcrStatus("found");
-      onSuggestReading?.(value);
+      setRecognizedValue(value);
     } else {
       setOcrStatus("not-found");
     }
@@ -119,6 +122,11 @@ export function PhotoCapture({
                 ? `Capturado: ${formatTimestamp(capturedAt)}`
                 : "Foto capturada"}
             </Text>
+            {recognizedValue ? (
+              <Text style={styles.ocrValueText}>
+                Texto lido: {recognizedValue}
+              </Text>
+            ) : null}
             <View style={styles.thumbnailZoomHint}>
               <MaterialIcons name="zoom-in" size={14} color={c.secondary} />
               <Text style={styles.thumbnailZoomText}>Ver foto</Text>
@@ -136,7 +144,7 @@ export function PhotoCapture({
         <View style={styles.ocrRow}>
           <MaterialIcons name="auto-awesome" size={14} color={c.secondary} />
           <Text style={styles.ocrTextSuccess}>
-            Valor preenchido automaticamente. Confira antes de salvar.
+            Valor identificado na foto. Confira e digite em "Nova leitura".
           </Text>
         </View>
       ) : ocrStatus === "not-found" ? (
@@ -302,6 +310,11 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "600",
     color: c.onSurfaceVariant,
+  },
+  ocrValueText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: c.secondary,
   },
   thumbnailZoomHint: {
     flexDirection: "row",

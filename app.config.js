@@ -1,6 +1,6 @@
 module.exports = {
   expo: {
-    name: "desafio-mobile-roteirizacao",
+    name: "Desafio Mobile Routerização",
     slug: "desafio-mobile-roteirizacao",
     newArchEnabled: false,
     version: "1.0.0",

@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { Visit, SyncStatus } from "../types";
-import { getAllVisits, upsertVisit } from "../storage/database";
+import { getAllVisits, upsertVisit, updatePointStatus } from "../storage/database";
 import { syncPendingVisits } from "../services/syncService";
 import { useRouteStore } from "./routeStore";
 
@@ -25,6 +25,7 @@ export const useVisitStore = create<VisitStore>((set, get) => ({
 
   completeVisit: async (visit) => {
     await upsertVisit(visit);
+    await updatePointStatus(visit.pointId, "visited");
     await get().loadVisits();
     useRouteStore.getState().refreshPointStatus(visit.pointId, "visited");
   },

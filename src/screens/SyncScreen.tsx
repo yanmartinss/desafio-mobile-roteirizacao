@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  Modal,
   Pressable,
   SectionList,
   StyleSheet,
@@ -230,7 +231,7 @@ export function SyncScreen({ navigation }: Props) {
                   { color: isOnline ? "#166534" : c.onErrorContainer },
                 ]}
               >
-                {isOnline ? "Conectado" : "Sem conexão"}
+                {isOnline ? "Conectado" : "Desconectado"}
               </Text>
             </View>
           </View>
@@ -296,7 +297,7 @@ export function SyncScreen({ navigation }: Props) {
               <>
                 <MaterialIcons name="sync" size={20} color="#ffffff" />
                 <Text style={styles.syncButtonText}>
-                  Selecione itens para sincronizar
+                  Selecione visitas para sincronizar
                 </Text>
               </>
             ) : (
@@ -334,6 +335,7 @@ function SyncCard({
   // Can't toggle something already mid-flight — show it via the existing
   // status spinner instead, not a checkbox.
   const showCheckbox = selectable && visit.syncStatus !== "syncing";
+  const [expanded, setExpanded] = useState(false);
 
   return (
     <Pressable
@@ -341,11 +343,7 @@ function SyncCard({
       onPress={onPress}
     >
       {showCheckbox ? (
-        <Pressable
-          style={styles.checkbox}
-          onPress={onToggleSelect}
-          hitSlop={8}
-        >
+        <Pressable style={styles.checkbox} onPress={onToggleSelect} hitSlop={8}>
           <MaterialIcons
             name={selected ? "check-box" : "check-box-outline-blank"}
             size={24}
@@ -354,7 +352,11 @@ function SyncCard({
         </Pressable>
       ) : null}
 
-      <View style={styles.thumbnail}>
+      <Pressable
+        style={styles.thumbnail}
+        disabled={!visit.photo}
+        onPress={() => setExpanded(true)}
+      >
         {visit.photo ? (
           <Image source={{ uri: visit.photo }} style={styles.thumbnailImage} />
         ) : (
@@ -366,18 +368,36 @@ function SyncCard({
             />
           </View>
         )}
-      </View>
+      </Pressable>
+
+      {visit.photo ? (
+        <Modal
+          visible={expanded}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setExpanded(false)}
+        >
+          <Pressable
+            style={styles.imageModalBackdrop}
+            onPress={() => setExpanded(false)}
+          >
+            <Image
+              source={{ uri: visit.photo }}
+              style={styles.imageModalPhoto}
+              resizeMode="contain"
+            />
+          </Pressable>
+        </Modal>
+      ) : null}
 
       <View style={styles.cardInfo}>
         <Text style={styles.cardCaption}>Endereço</Text>
-        <Text style={styles.cardAddress} numberOfLines={1}>
+        <Text style={styles.cardAddress} numberOfLines={2}>
           {address ?? visit.installationCode}
         </Text>
 
-        <Text style={styles.cardCaption}>Número do medidor</Text>
-        <Text style={styles.cardValue}>
-          {visit.currentReading}
-        </Text>
+        <Text style={styles.cardCaption}>Número da leitura</Text>
+        <Text style={styles.cardValue}>{visit.currentReading}</Text>
 
         <View style={[styles.statusPill, { backgroundColor: status.bg }]}>
           {visit.syncStatus === "syncing" ? (
@@ -544,6 +564,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  imageModalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.9)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  imageModalPhoto: {
+    width: "100%",
+    height: "100%",
+  },
   cardInfo: {
     flex: 1,
     justifyContent: "center",
@@ -557,7 +587,8 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   cardAddress: {
-    fontSize: 16,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: "600",
     color: c.onSurface,
     marginBottom: 8,
