@@ -23,12 +23,20 @@ async function syncVisit(
   await updateVisitSyncStatus(visit.pointId, status);
 }
 
-export async function syncAllPending(
+// pointIds, when given, restricts the sync run to that subset — lets the
+// user pick which pending visits to send instead of always syncing
+// everything. Omit it (or pass undefined) to sync all pending/error visits,
+// same as before.
+export async function syncPendingVisits(
   onStatusChange: (pointId: number, status: SyncStatus) => void,
+  pointIds?: number[],
 ): Promise<void> {
   const visits = await getAllVisits();
+  const selected = pointIds ? new Set(pointIds) : null;
   const pending = visits.filter(
-    (v) => v.syncStatus === "pending" || v.syncStatus === "error",
+    (v) =>
+      (v.syncStatus === "pending" || v.syncStatus === "error") &&
+      (!selected || selected.has(v.pointId)),
   );
 
   for (const visit of pending) {

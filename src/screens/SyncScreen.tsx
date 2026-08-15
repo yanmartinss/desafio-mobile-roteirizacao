@@ -1,10 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
   Image,
   Pressable,
+  SectionList,
   StyleSheet,
   Text,
   View,
@@ -13,11 +13,61 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../navigation/types";
+import { getBackLabel } from "../navigation/backLabel";
 import { useRouteStore } from "../store/routeStore";
 import { useVisitStore } from "../store/visitStore";
 import { useNetworkStatus } from "../hooks/useNetworkStatus";
 import { meterConnectColors as c } from "../theme/meterConnectColors";
 import { SyncStatus, Visit } from "../types";
+
+interface SyncSection {
+  key: string;
+  routeName: string;
+  statusLabel: string;
+  icon: keyof typeof MaterialIcons.glyphMap;
+  selectable: boolean;
+  data: Visit[];
+}
+
+// Grouped by route first (today there's only ever one, but visits already
+// carry pointId → route.points linkage, so this scales cleanly if the app
+// ever loads more than one route), then split by sync status within each —
+// pending/syncing/error visits separated from synced ones, so it's obvious
+// at a glance what's still actionable per route.
+function buildSyncSections(
+  routes: { routeId: string; routeName: string; points: { id: number }[] }[],
+  visits: Visit[],
+): SyncSection[] {
+  return routes.flatMap((r) => {
+    const routePointIds = new Set(r.points.map((p) => p.id));
+    const routeVisits = visits.filter((v) => routePointIds.has(v.pointId));
+    const unsynced = routeVisits.filter((v) => v.syncStatus !== "synced");
+    const synced = routeVisits.filter((v) => v.syncStatus === "synced");
+
+    const sections: SyncSection[] = [];
+    if (unsynced.length > 0) {
+      sections.push({
+        key: `${r.routeId}-pending`,
+        routeName: r.routeName,
+        statusLabel: "Pendentes de sincronização",
+        icon: "pending",
+        selectable: true,
+        data: unsynced,
+      });
+    }
+    if (synced.length > 0) {
+      sections.push({
+        key: `${r.routeId}-synced`,
+        routeName: r.routeName,
+        statusLabel: "Sincronizados",
+        icon: "check-circle",
+        selectable: false,
+        data: synced,
+      });
+    }
+    return sections;
+  });
+}
 
 type Props = NativeStackScreenProps<RootStackParamList, "Sync">;
 
@@ -60,14 +110,45 @@ export function SyncScreen({ navigation }: Props) {
   const route = useRouteStore((s) => s.route);
   const { visits, syncing, loadVisits, syncAll } = useVisitStore();
   const isOnline = useNetworkStatus();
+  // Items the user has explicitly opted OUT of syncing. Starts empty, so
+  // by default everything pending is selected — same as the old
+  // "always sync everything" behavior — and only shrinks the sync run when
+  // the user actually deselects something.
+  const [excludedIds, setExcludedIds] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     loadVisits();
   }, []);
 
-  const pendingCount = visits.filter(
+  const pendingVisits = visits.filter(
     (v) => v.syncStatus === "pending" || v.syncStatus === "error",
-  ).length;
+  );
+  const pendingCount = pendingVisits.length;
+  const selectedIds = pendingVisits
+    .filter((v) => !excludedIds.has(v.pointId))
+    .map((v) => v.pointId);
+  const selectedCount = selectedIds.length;
+
+  const backLabel = getBackLabel(navigation);
+  const sections = buildSyncSections(route ? [route] : [], visits);
+
+  function toggleSelected(pointId: number) {
+    setExcludedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(pointId)) next.delete(pointId);
+      else next.add(pointId);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    setExcludedIds((prev) => {
+      const allSelected = pendingVisits.every((v) => !prev.has(v.pointId));
+      return allSelected
+        ? new Set(pendingVisits.map((v) => v.pointId))
+        : new Set();
+    });
+  }
 
   function handleSyncPress() {
     if (!isOnline) {
@@ -77,7 +158,8 @@ export function SyncScreen({ navigation }: Props) {
       );
       return;
     }
-    syncAll();
+    if (selectedCount === 0) return;
+    syncAll(selectedIds);
   }
 
   return (
@@ -85,24 +167,49 @@ export function SyncScreen({ navigation }: Props) {
       <SafeAreaView edges={["top"]} style={styles.header}>
         <Pressable
           style={({ pressed }) => [
-            styles.headerIconButton,
+            styles.headerBackButton,
             pressed && styles.pressed,
           ]}
           onPress={() => navigation.goBack()}
           hitSlop={8}
         >
-          <MaterialIcons name="arrow-back" size={24} color={c.primary} />
+          <MaterialIcons name="arrow-back" size={22} color={c.primary} />
+          <Text style={styles.headerBackButtonText}>{backLabel}</Text>
         </Pressable>
-        <Text style={styles.headerTitle}>Desafio</Text>
-        <View style={styles.headerIconButton} />
       </SafeAreaView>
 
-      <FlatList
+      <SectionList
         style={styles.list}
         contentContainerStyle={styles.listContent}
-        data={visits}
+        sections={sections}
+        stickySectionHeadersEnabled={false}
         keyExtractor={(item) => String(item.pointId)}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
+        renderSectionHeader={({ section }) => (
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionHeaderRow}>
+              <MaterialIcons
+                name={section.icon}
+                size={16}
+                color={c.onSurfaceVariant}
+              />
+              <Text style={styles.sectionHeaderText}>
+                {section.statusLabel} ({section.data.length})
+              </Text>
+            </View>
+            <Text style={styles.sectionHeaderRoute}>{section.routeName}</Text>
+            {section.selectable ? (
+              <Pressable onPress={toggleSelectAll} hitSlop={8}>
+                <Text style={styles.selectAllText}>
+                  {selectedCount === pendingCount
+                    ? "Desmarcar todos"
+                    : "Selecionar todos"}
+                </Text>
+              </Pressable>
+            ) : null}
+          </View>
+        )}
+        renderSectionFooter={() => <View style={styles.sectionFooterGap} />}
         ListHeaderComponent={
           <View style={styles.listHeader}>
             <Text style={styles.title}>Central de Sincronização</Text>
@@ -131,7 +238,7 @@ export function SyncScreen({ navigation }: Props) {
         ListEmptyComponent={
           <Text style={styles.emptyText}>Nenhuma visita registrada ainda.</Text>
         }
-        renderItem={({ item }) => {
+        renderItem={({ item, section }) => {
           const point = route?.points.find((p) => p.id === item.pointId);
           return (
             <SyncCard
@@ -140,6 +247,9 @@ export function SyncScreen({ navigation }: Props) {
               onPress={() =>
                 navigation.navigate("PointDetail", { pointId: item.pointId })
               }
+              selectable={section.selectable}
+              selected={!excludedIds.has(item.pointId)}
+              onToggleSelect={() => toggleSelected(item.pointId)}
             />
           );
         }}
@@ -154,11 +264,16 @@ export function SyncScreen({ navigation }: Props) {
                 pendingCount > 0 &&
                 !syncing &&
                 styles.syncButtonOffline,
-              (syncing || pendingCount === 0) && styles.syncButtonDisabled,
-              pressed && pendingCount > 0 && !syncing && styles.pressed,
+              (syncing || pendingCount === 0 || selectedCount === 0) &&
+                styles.syncButtonDisabled,
+              pressed &&
+                pendingCount > 0 &&
+                selectedCount > 0 &&
+                !syncing &&
+                styles.pressed,
             ]}
             onPress={handleSyncPress}
-            disabled={syncing || pendingCount === 0}
+            disabled={syncing || pendingCount === 0 || selectedCount === 0}
           >
             {syncing ? (
               <>
@@ -177,12 +292,19 @@ export function SyncScreen({ navigation }: Props) {
                   Sem conexão ({pendingCount})
                 </Text>
               </>
+            ) : selectedCount === 0 ? (
+              <>
+                <MaterialIcons name="sync" size={20} color="#ffffff" />
+                <Text style={styles.syncButtonText}>
+                  Selecione itens para sincronizar
+                </Text>
+              </>
             ) : (
               <>
                 <MaterialIcons name="sync" size={20} color="#ffffff" />
                 <Text style={styles.syncButtonText}>
-                  Sincronizar agora ({pendingCount}{" "}
-                  {pendingCount === 1 ? "item" : "itens"})
+                  Sincronizar {selectedCount} de {pendingCount}{" "}
+                  {pendingCount === 1 ? "item" : "itens"}
                 </Text>
               </>
             )}
@@ -197,18 +319,41 @@ function SyncCard({
   visit,
   address,
   onPress,
+  selectable,
+  selected,
+  onToggleSelect,
 }: {
   visit: Visit;
   address?: string;
   onPress: () => void;
+  selectable: boolean;
+  selected: boolean;
+  onToggleSelect: () => void;
 }) {
   const status = STATUS_META[visit.syncStatus];
+  // Can't toggle something already mid-flight — show it via the existing
+  // status spinner instead, not a checkbox.
+  const showCheckbox = selectable && visit.syncStatus !== "syncing";
 
   return (
     <Pressable
       style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
       onPress={onPress}
     >
+      {showCheckbox ? (
+        <Pressable
+          style={styles.checkbox}
+          onPress={onToggleSelect}
+          hitSlop={8}
+        >
+          <MaterialIcons
+            name={selected ? "check-box" : "check-box-outline-blank"}
+            size={24}
+            color={selected ? c.secondary : c.outline}
+          />
+        </Pressable>
+      ) : null}
+
       <View style={styles.thumbnail}>
         {visit.photo ? (
           <Image source={{ uri: visit.photo }} style={styles.thumbnailImage} />
@@ -261,8 +406,7 @@ const styles = StyleSheet.create({
     backgroundColor: c.surfaceContainerHighest,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 8,
+    paddingHorizontal: 16,
     paddingBottom: 8,
     shadowColor: "#000",
     shadowOpacity: 0.06,
@@ -271,20 +415,18 @@ const styles = StyleSheet.create({
     elevation: 2,
     zIndex: 10,
   },
-  headerIconButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+  headerBackButton: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    gap: 6,
+    height: 36,
+    paddingHorizontal: 8,
+    borderRadius: 18,
   },
-  headerTitle: {
-    flex: 1,
-    textAlign: "center",
-    fontSize: 20,
-    lineHeight: 28,
+  headerBackButtonText: {
+    fontSize: 15,
     fontWeight: "600",
-    color: c.onSurface,
+    color: c.primary,
   },
   list: {
     flex: 1,
@@ -334,6 +476,36 @@ const styles = StyleSheet.create({
   separator: {
     height: 16,
   },
+  sectionHeader: {
+    gap: 4,
+    backgroundColor: c.surface,
+    paddingBottom: 12,
+  },
+  sectionHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  sectionHeaderText: {
+    fontSize: 13,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    color: c.onSurfaceVariant,
+  },
+  sectionHeaderRoute: {
+    fontSize: 12,
+    color: c.onSurfaceVariant,
+  },
+  selectAllText: {
+    alignSelf: "flex-end",
+    fontSize: 12,
+    fontWeight: "700",
+    color: c.secondary,
+  },
+  sectionFooterGap: {
+    height: 24,
+  },
   card: {
     backgroundColor: c.surfaceContainerLowest,
     borderWidth: 1,
@@ -350,6 +522,9 @@ const styles = StyleSheet.create({
   },
   cardPressed: {
     opacity: 0.85,
+  },
+  checkbox: {
+    alignSelf: "center",
   },
   thumbnail: {
     width: 96,

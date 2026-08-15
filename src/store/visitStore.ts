@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { Visit, SyncStatus } from "../types";
 import { getAllVisits, upsertVisit } from "../storage/database";
-import { syncAllPending } from "../services/syncService";
+import { syncPendingVisits } from "../services/syncService";
 import { useRouteStore } from "./routeStore";
 
 interface VisitStore {
@@ -9,7 +9,9 @@ interface VisitStore {
   syncing: boolean;
   loadVisits: () => Promise<void>;
   completeVisit: (visit: Visit) => Promise<void>;
-  syncAll: () => Promise<void>;
+  // pointIds lets the caller sync only a chosen subset of pending visits;
+  // omit to sync everything pending, as before.
+  syncAll: (pointIds?: number[]) => Promise<void>;
 }
 
 export const useVisitStore = create<VisitStore>((set, get) => ({
@@ -27,15 +29,15 @@ export const useVisitStore = create<VisitStore>((set, get) => ({
     useRouteStore.getState().refreshPointStatus(visit.pointId, "visited");
   },
 
-  syncAll: async () => {
+  syncAll: async (pointIds) => {
     set({ syncing: true });
-    await syncAllPending((pointId, status: SyncStatus) => {
+    await syncPendingVisits((pointId, status: SyncStatus) => {
       set((state) => ({
         visits: state.visits.map((v) =>
           v.pointId === pointId ? { ...v, syncStatus: status } : v,
         ),
       }));
-    });
+    }, pointIds);
     await get().loadVisits();
     set({ syncing: false });
   },

@@ -11,6 +11,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../navigation/types";
+import { getBackLabel } from "../navigation/backLabel";
 import { useRouteStore } from "../store/routeStore";
 import { useVisitStore } from "../store/visitStore";
 import { getVisitForPoint } from "../storage/database";
@@ -33,6 +34,7 @@ export function PointDetailScreen({ route, navigation }: Props) {
     s.route?.points.find((p) => p.id === pointId),
   );
   const completeVisit = useVisitStore((s) => s.completeVisit);
+  const backLabel = getBackLabel(navigation);
 
   const [reading, setReading] = useState("");
   const [readingError, setReadingError] = useState<string | null>(null);
@@ -149,18 +151,15 @@ export function PointDetailScreen({ route, navigation }: Props) {
       <SafeAreaView edges={["top"]} style={styles.header}>
         <Pressable
           style={({ pressed }) => [
-            styles.headerIconButton,
+            styles.headerBackButton,
             pressed && styles.pressed,
           ]}
           onPress={() => navigation.goBack()}
           hitSlop={8}
         >
-          <MaterialIcons name="arrow-back" size={24} color={c.primary} />
+          <MaterialIcons name="arrow-back" size={22} color={c.primary} />
+          <Text style={styles.headerBackButtonText}>{backLabel}</Text>
         </Pressable>
-        <View style={styles.headerTitleWrap}>
-          <Text style={styles.headerTitle}>Visita</Text>
-        </View>
-        <View style={styles.headerIconButton} />
       </SafeAreaView>
 
       <ScrollView
@@ -333,7 +332,6 @@ const styles = StyleSheet.create({
     backgroundColor: c.surfaceContainerHighest,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingBottom: 8,
     shadowColor: "#000",
@@ -343,29 +341,18 @@ const styles = StyleSheet.create({
     elevation: 2,
     zIndex: 10,
   },
-  headerIconButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+  headerBackButton: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    gap: 6,
+    height: 36,
+    paddingHorizontal: 8,
+    borderRadius: 18,
   },
-  headerTitleWrap: {
-    flex: 1,
-    alignItems: "center",
-  },
-  headerTitle: {
-    fontSize: 20,
-    lineHeight: 28,
+  headerBackButtonText: {
+    fontSize: 15,
     fontWeight: "600",
     color: c.primary,
-  },
-  headerSubtitle: {
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: "700",
-    letterSpacing: 0.6,
-    color: c.onSurfaceVariant,
   },
   scroll: {
     flex: 1,

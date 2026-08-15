@@ -17,6 +17,7 @@ import { useVisitStore } from "../store/visitStore";
 import { useNetworkStatus } from "../hooks/useNetworkStatus";
 import { ReadingLocation, RouteMap } from "../components/RouteMap";
 import { OfflineEmptyState } from "../components/OfflineEmptyState";
+import { BottomNavBar } from "../components/BottomNavBar";
 import { RoutePoint, Visit } from "../types";
 import { meterConnectColors as c } from "../theme/meterConnectColors";
 
@@ -157,21 +158,17 @@ export function RouteListScreen({ navigation }: Props) {
   return (
     <View style={styles.screen}>
       <SafeAreaView edges={["top"]} style={styles.header}>
-        <View style={styles.headerLeft}>
-          <Pressable
-            style={({ pressed }) => [
-              styles.headerBackButton,
-              pressed && styles.pressed,
-            ]}
-            onPress={() => navigation.goBack()}
-            hitSlop={8}
-          >
-            <MaterialIcons name="arrow-back" size={22} color={c.onSurfaceVariant} />
-          </Pressable>
-          <View style={styles.headerTitleWrap}>
-            <Text style={styles.headerTitle}>Desafio</Text>
-          </View>
-        </View>
+        <Pressable
+          style={({ pressed }) => [
+            styles.headerBackButton,
+            pressed && styles.pressed,
+          ]}
+          onPress={() => navigation.goBack()}
+          hitSlop={8}
+        >
+          <MaterialIcons name="arrow-back" size={22} color={c.onSurfaceVariant} />
+          <Text style={styles.headerBackButtonText}>Seleção de Rotas</Text>
+        </Pressable>
       </SafeAreaView>
 
       <FlatList
@@ -312,6 +309,11 @@ export function RouteListScreen({ navigation }: Props) {
         )}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
       />
+
+      <BottomNavBar
+        pendingSync={pendingSync}
+        onPressSync={() => navigation.navigate("Sync")}
+      />
     </View>
   );
 }
@@ -430,7 +432,7 @@ function InspectionCard({
               <MaterialIcons
                 name="done-all"
                 size={20}
-                color={c.onSurfaceVariant}
+                color={c.secondaryContainer}
               />
               <Text style={styles.viewDetailsButtonText}>Ver detalhes</Text>
             </>
@@ -474,7 +476,6 @@ const styles = StyleSheet.create({
     backgroundColor: c.surfaceContainerHighest,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingBottom: 8,
     shadowColor: "#000",
@@ -484,26 +485,18 @@ const styles = StyleSheet.create({
     elevation: 2,
     zIndex: 10,
   },
-  headerLeft: {
+  headerBackButton: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
-  },
-  headerBackButton: {
-    width: 36,
+    gap: 6,
     height: 36,
+    paddingHorizontal: 8,
     borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
   },
-  headerTitleWrap: {
-    justifyContent: "center",
-  },
-  headerTitle: {
-    fontSize: 20,
-    lineHeight: 28,
+  headerBackButtonText: {
+    fontSize: 15,
     fontWeight: "600",
-    color: c.onSurface,
+    color: c.onSurfaceVariant,
   },
   list: {
     flex: 1,
@@ -788,7 +781,7 @@ const styles = StyleSheet.create({
   viewDetailsButtonText: {
     fontSize: 16,
     fontWeight: "700",
-    color: c.onSurfaceVariant,
+    color: c.secondaryContainer,
   },
   separator: {
     height: 12,

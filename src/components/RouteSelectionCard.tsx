@@ -8,7 +8,6 @@ import { meterConnectColors as c } from "../theme/meterConnectColors";
 // prototype exactly, same convention already used for one-off banner
 // colors elsewhere (e.g. the disconnected-state red in RouteListScreen).
 const ACCENT_BLUE = "#0EA5E9";
-const NEUTRAL_STRIPE = "#E2E8F0";
 
 export type RouteCardVariant = "pending" | "in_progress" | "completed";
 
@@ -34,21 +33,27 @@ const ROUTE_STATUS_LABEL: Record<string, string> = {
 // Derived from real visit data (not the static JSON `status` field) so the
 // card's layout reflects actual progress — the JSON's `status` never
 // changes once loaded, but points get visited locally over time.
-export function computeRouteProgress(route: Route, visits: Visit[]): RouteProgress {
+export function computeRouteProgress(
+  route: Route,
+  visits: Visit[],
+): RouteProgress {
   const visitedIds = new Set(visits.map((v) => v.pointId));
   const total = route.points.length;
   const completed = route.points.filter((p) => visitedIds.has(p.id)).length;
   const pending = total - completed;
   const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
   const variant: RouteCardVariant =
-    completed === 0 ? "pending" : completed === total ? "completed" : "in_progress";
+    completed === 0
+      ? "pending"
+      : completed === total
+        ? "completed"
+        : "in_progress";
   return { total, completed, pending, percent, variant };
 }
 
 const VARIANT_META: Record<
   RouteCardVariant,
   {
-    stripeColor: string;
     badgeBg: string;
     badgeText: string;
     badgeIcon: keyof typeof MaterialIcons.glyphMap;
@@ -56,21 +61,18 @@ const VARIANT_META: Record<
   }
 > = {
   pending: {
-    stripeColor: NEUTRAL_STRIPE,
     badgeBg: c.surfaceVariant,
     badgeText: c.onSurfaceVariant,
     badgeIcon: "pending",
     badgeLabel: "Pendente",
   },
   in_progress: {
-    stripeColor: ACCENT_BLUE,
     badgeBg: c.secondaryContainer,
     badgeText: c.onSecondaryContainer,
     badgeIcon: "schedule",
     badgeLabel: "Em Andamento",
   },
   completed: {
-    stripeColor: c.success,
     badgeBg: c.completedBadgeBg,
     badgeText: c.completedBadgeText,
     badgeIcon: "check-circle",
@@ -91,15 +93,7 @@ export function RouteSelectionCard({ route, progress, onOpen }: Props) {
   const isInProgress = progress.variant === "in_progress";
 
   return (
-    <View
-      style={[
-        styles.card,
-        isCompleted && styles.cardCompleted,
-        { paddingLeft: 16 + 8 },
-      ]}
-    >
-      <View style={[styles.stripe, { backgroundColor: meta.stripeColor }]} />
-
+    <View style={[styles.card, isCompleted && styles.cardCompleted]}>
       <View style={styles.topRow}>
         <View style={styles.topRowLeft}>
           <View style={styles.chipRow}>
@@ -108,8 +102,14 @@ export function RouteSelectionCard({ route, progress, onOpen }: Props) {
                 {route.neighborhood}
               </Text>
             </View>
-            <View style={[styles.statusBadge, { backgroundColor: meta.badgeBg }]}>
-              <MaterialIcons name={meta.badgeIcon} size={14} color={meta.badgeText} />
+            <View
+              style={[styles.statusBadge, { backgroundColor: meta.badgeBg }]}
+            >
+              <MaterialIcons
+                name={meta.badgeIcon}
+                size={14}
+                color={meta.badgeText}
+              />
               <Text style={[styles.statusBadgeText, { color: meta.badgeText }]}>
                 {badgeLabel}
               </Text>
@@ -122,11 +122,6 @@ export function RouteSelectionCard({ route, progress, onOpen }: Props) {
             {route.routeName}
           </Text>
         </View>
-        {!isCompleted ? (
-          <View style={styles.moreButton}>
-            <MaterialIcons name="more-vert" size={24} color={c.outline} />
-          </View>
-        ) : null}
       </View>
 
       {!isCompleted ? (
@@ -214,19 +209,17 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     gap: 16,
-    position: "relative",
-    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
   },
   cardCompleted: {
     backgroundColor: c.screenBackground,
     opacity: 0.7,
-  },
-  stripe: {
-    position: "absolute",
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 8,
+    shadowOpacity: 0,
+    elevation: 0,
   },
   topRow: {
     flexDirection: "row",
@@ -279,13 +272,6 @@ const styles = StyleSheet.create({
   },
   titleCompleted: {
     color: c.onSurfaceVariant,
-  },
-  moreButton: {
-    width: 40,
-    height: 40,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: -8,
   },
   statsGrid: {
     flexDirection: "row",
